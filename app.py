@@ -1,23 +1,13 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import google.generativeai as genai # NEW
 from crap_analyzer.parser import extract_text_from_pdf
-# --- UPDATED: Import the new AI function ---
-from crap_analyzer.analyzer import split_text_into_chunks, get_embeddings, calculate_similarity_matrix, generate_feedback
-
-# --- NEW: Configure the Gemini API Key from secrets ---
-try:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-except Exception as e:
-    st.error("Error configuring the Google API. Did you set up your secrets.toml file?")
-
+from crap_analyzer.analyzer import extract_skills_from_text, analyze_skills_alignment, generate_final_summary
 
 st.set_page_config(page_title="C.R.A.P.", layout="wide")
 
 # --- Header ---
 st.title("Candidate Review & Analysis Protocol (C.R.A.P.) 💩")
-st.subheader("Stop throwing your resume into the abyss. Get some real feedback.")
+st.subheader("A skills-first approach to resume and job description alignment.")
 
 # --- Sidebar for Inputs ---
 st.sidebar.header("Your Documents")
@@ -28,50 +18,66 @@ analyze_button = st.sidebar.button("Run the C.R.A.P. Analysis", type="primary")
 # Main analysis logic
 if analyze_button:
     if uploaded_resume is not None and jd_text:
-        # --- Step 1: Parsing ---
-        st.subheader("Step 1: C.R.A.P. Ingestion Report")
-        with st.expander("See the raw text extracted from your resume"):
+        # --- 1. Extraction Phase ---
+        with st.spinner("Step 1/3: Extracting skills from documents..."):
             resume_text = extract_text_from_pdf(uploaded_resume)
-            st.text_area("Resume Text", resume_text, height=250, disabled=True)
-        st.markdown("---")
-        
-        # --- Step 2: AI Analysis ---
-        st.subheader("Step 2: AI Semantic Analysis")
-        with st.spinner("The AI is 'reading' your documents..."):
-            resume_chunks = split_text_into_chunks(resume_text)
-            jd_chunks = split_text_into_chunks(jd_text)
-            resume_embeddings = get_embeddings(resume_chunks)
-            jd_embeddings = get_embeddings(jd_chunks)
-            similarity_matrix = calculate_similarity_matrix(resume_embeddings, jd_embeddings)
-            
-            matches = []
-            for i in range(len(resume_chunks)):
-                best_match_score = similarity_matrix[i].max().item()
-                best_match_index = similarity_matrix[i].argmax().item()
-                matches.append({
-                    "Resume Section": resume_chunks[i],
-                    "Most Relevant JD Section": jd_chunks[best_match_index],
-                    "Match Score": f"{best_match_score:.2f}"
-                })
-            match_df = pd.DataFrame(matches)
+            resume_skills = extract_skills_from_text(resume_text)
+            jd_skills = extract_skills_from_text(jd_text)
 
-        st.info("The AI compares the *meaning* of each section of your resume to the job description.")
-        st.dataframe(match_df, use_container_width=True, hide_index=True)
-        st.markdown("---")
+        # --- 2. Analysis Phase ---
+        with st.spinner("Step 2/3: Analyzing skills alignment..."):
+            matched, resume_only, missing = analyze_skills_alignment(resume_skills, jd_skills)
+
+        # --- 3. Reporting Phase ---
+        st.header("🔬 C.R.A.P. Analysis Report")
+
+        # --- Overall Score ---
+        if jd_skills:
+            # Calculate the percentage of required skills that are matched
+            match_percentage = len(matched) / len(jd_skills) if jd_skills else 0
+        else:
+            match_percentage = 0
         
-        # --- Step 3: Final Score ---
-        st.subheader("Step 3: Final C.R.A.P. Rating")
-        average_score = np.mean([float(match["Match Score"]) for match in matches])
-        match_percentage = int(average_score * 100)
-        st.metric(label="Overall Match Score", value=f"{match_percentage}%")
-        st.progress(average_score)
+        st.metric(label="Overall Skill Alignment with Job Description", value=f"{match_percentage:.0%}")
+        st.progress(match_percentage)
         st.markdown("---")
+
+        # --- Create Columns for the Report ---
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.success("✅ Matched Skills")
+            if matched:
+                match_df = pd.DataFrame(matched)
+                match_df.rename(columns={'resume_skill': 'Your Skill', 'jd_skill': 'Required Skill', 'score': 'Similarity'}, inplace=True)
+                st.dataframe(match_df, use_container_width=True, hide_index=True)
+            else:
+                st.write("No strong skill matches found.")
+
+        with col2:
+            st.warning("❌ Missing Key Skills")
+            if missing:
+                missing_df = pd.DataFrame({'Skill Required by Job': [skill.title() for skill in missing]})
+                st.dataframe(missing_df, use_container_width=True, hide_index=True)
+            else:
+                st.write("Great news! You don't appear to be missing any key skills.")
         
-        # --- NEW: Step 4: Generative Feedback ---
-        st.subheader("Step 4: AI Coach Feedback")
-        with st.spinner("Your AI Coach is formulating some advice..."):
-            feedback = generate_feedback(match_df)
-            st.markdown(feedback)
-        # --- END NEW ---
+        with col3:
+            st.info("💡 Your Unique Skills")
+            st.write("(Skills you have that are not listed in the job description)")
+            if resume_only:
+                resume_only_df = pd.DataFrame({'Your Skill': [skill.title() for skill in resume_only]})
+                st.dataframe(resume_only_df, use_container_width=True, hide_index=True)
+            else:
+                st.write("No unique skills identified.")
+
+        st.markdown("---")
+
+        # --- 4. Final Summary ---
+        with st.spinner("Step 3/3: Generating AI Coach Summary..."):
+            st.header("🧑‍🏫 AI Coach Summary")
+            final_summary = generate_final_summary(matched, missing)
+            st.markdown(final_summary)
+
     else:
         st.error("Please provide a resume and a job description to analyze.")

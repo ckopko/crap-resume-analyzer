@@ -2,56 +2,95 @@ from sentence_transformers import SentenceTransformer, util
 import numpy as np
 import google.generativeai as genai
 import pandas as pd
+import json
 
-# This line downloads a pre-trained model to your computer the first time you run it.
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# --- The embedding model for comparing skills semantically ---
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# --- THIS FUNCTION WAS LIKELY MISSING ---
-def split_text_into_chunks(text, chunk_size=256, overlap=32):
-    """Splits text into smaller, overlapping chunks for more granular comparison."""
-    words = text.split()
-    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size - overlap)]
+# --- UPDATED: The generative model is now defined with the correct 2.5 Pro name ---
+generative_model = genai.GenerativeModel('gemini-2.5-pro')
 
-def get_embeddings(text_chunks):
-    """Converts a list of text chunks into a list of numerical vectors."""
-    return model.encode(text_chunks, convert_to_tensor=True)
-
-def calculate_similarity_matrix(resume_embeddings, jd_embeddings):
-    """Calculates the cosine similarity between all resume and JD chunks."""
-    return util.cos_sim(resume_embeddings, jd_embeddings)
-
-def generate_feedback(analysis_df: pd.DataFrame):
-    """Asks a generative AI for feedback based on the analysis."""
-
-    # Convert the DataFrame to a more readable format for the AI
-    analysis_text = ""
-    for index, row in analysis_df.iterrows():
-        analysis_text += f"- Resume Section: \"{row['Resume Section']}\"\n"
-        analysis_text += f"  - Best JD Match: \"{row['Most Relevant JD Section']}\"\n"
-        analysis_text += f"  - Match Score: {row['Match Score']}\n\n"
-
-    # Set up the generative model
-    model = genai.GenerativeModel('gemini-1.5-pro-latest')
-
-    # This is the prompt that instructs the AI
+def extract_skills_from_text(text: str):
+    """
+    Uses the generative model to extract a list of skills from a text block.
+    """
     prompt = f"""
-    You are an expert career coach and resume writer reviewing a candidate's resume against a job description.
-    Based on the following semantic analysis data, provide actionable feedback. The data shows sections from a candidate's resume and the corresponding best-matching section from the job description, along with a match score (0.0 to 1.0).
+    You are an expert technical recruiter and HR analyst. Your task is to extract all technical skills, soft skills, tools, and qualifications from the following text.
+    Return a clean, JSON-formatted list of unique skills.
 
-    Analysis Data:
-    {analysis_text}
+    Example Output: ["Python", "Data Analysis", "Team Leadership", "Project Management", "Agile Methodologies", "Tableau", "Microsoft Excel"]
+
+    Text to Analyze:
+    "{text}"
+
+    JSON Skill List:
+    """
+    try:
+        # Use the globally defined model
+        response = generative_model.generate_content(prompt)
+        cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+        skill_list = json.loads(cleaned_response)
+        return sorted(list(set([skill.lower() for skill in skill_list])))
+    except Exception as e:
+        print(f"Error extracting skills: {e}")
+        return []
+
+def analyze_skills_alignment(resume_skills: list, jd_skills: list, threshold=0.70):
+    """
+    Analyzes the alignment between two lists of skills using semantic similarity.
+    """
+    if not resume_skills or not jd_skills:
+        return [], [], list(jd_skills)
+
+    resume_embeddings = embedding_model.encode(resume_skills, convert_to_tensor=True)
+    jd_embeddings = embedding_model.encode(jd_skills, convert_to_tensor=True)
+
+    similarity_matrix = util.cos_sim(resume_embeddings, jd_embeddings)
+
+    matched_skills = []
+    unmatched_resume_skills = set(resume_skills)
+    unmatched_jd_skills = set(jd_skills)
+
+    for i in range(len(resume_skills)):
+        best_match_score = similarity_matrix[i].max().item()
+        best_match_index = similarity_matrix[i].argmax().item()
+
+        if best_match_score >= threshold:
+            resume_skill = resume_skills[i]
+            jd_skill = jd_skills[best_match_index]
+            
+            matched_skills.append({
+                "resume_skill": resume_skill.title(),
+                "jd_skill": jd_skill.title(),
+                "score": f"{best_match_score:.2f}"
+            })
+            
+            unmatched_resume_skills.discard(resume_skill)
+            if jd_skill in unmatched_jd_skills:
+                 unmatched_jd_skills.discard(jd_skill)
+
+    return matched_skills, sorted(list(unmatched_resume_skills)), sorted(list(unmatched_jd_skills))
+
+def generate_final_summary(matched_skills: list, missing_skills: list):
+    """Generates a final summary and advice."""
+    matched_text = ", ".join([match['resume_skill'] for match in matched_skills]) if matched_skills else "None"
+    missing_text = ", ".join([skill.title() for skill in missing_skills]) if missing_skills else "None"
+
+    prompt = f"""
+    You are an expert career coach providing a final summary for a resume-to-job-description analysis.
+
+    Here is the data:
+    - Skills the candidate has that match the job: {matched_text}
+    - Key skills the candidate is missing for the job: {missing_text}
 
     Your Task:
-    1.  Start with a one-sentence summary of the overall alignment (good, average, poor).
-    2.  Identify the top 2-3 strengths where the resume strongly aligns with the job description (high match scores).
-    3.  Identify the most significant 2-3 gaps or weaknesses where the resume is poorly aligned (low match scores).
-    4.  Provide a bulleted list of 3-5 specific, actionable suggestions for the candidate to improve their resume for this specific job. For example, "Consider adding a project that demonstrates your experience with 'data visualization', as this is a key requirement in the job description." or "Rephrase your experience with 'team collaboration' to use keywords like 'agile' and 'scrum' mentioned in the job description."
-
-    Please format your response using markdown.
+    Write a concise, encouraging, two-paragraph summary.
+    1.  In the first paragraph, congratulate the user on their strengths, highlighting 2-3 of the most important matched skills.
+    2.  In the second paragraph, identify the most critical skill gap from the missing skills list. Provide a specific, actionable suggestion on how they could address this gap (e.g., "To address the missing 'Cloud Deployment' skill, consider taking a short online course on AWS or Azure fundamentals and adding a small project to your portfolio.").
     """
-
     try:
-        response = model.generate_content(prompt)
+        # Use the globally defined model
+        response = generative_model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Error communicating with the AI model: {e}"
+        return f"Error generating summary: {e}"
