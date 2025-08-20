@@ -1,0 +1,20 @@
+Job Title: Data Analyst
+
+Company: QuantumLeap Analytics
+
+We are seeking a motivated Data Analyst to join our growing team. The ideal candidate will have a passion for data and a knack for solving complex problems. You will be responsible for turning data into actionable insights that will help guide our business decisions.
+
+Responsibilities:
+- Design and develop business intelligence solutions using Tableau or similar BI tools.
+- Write complex SQL queries, including Common Table Expressions (CTEs) and window functions, to extract and manipulate data from our data warehouse.
+- Use Python to perform statistical analysis and build predictive models.
+- Communicate findings to stakeholders through clear and concise reports and presentations.
+- Collaborate with cross-functional teams to understand data needs and deliver solutions.
+
+Qualifications:
+- Bachelor's degree in a quantitative field like Statistics, Mathematics, or Computer Science.
+- 2+ years of experience in a data analyst role.
+- Expert proficiency in SQL.
+- Strong experience with a data visualization tool, preferably Tableau.
+- Proficiency in Python for data analysis (Pandas, NumPy).
+- Excellent communication and presentation skills.
