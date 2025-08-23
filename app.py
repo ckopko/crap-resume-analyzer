@@ -96,7 +96,7 @@ if st.sidebar.button("Run Analysis", type="primary"):
 # --- Donation Section ---
 st.sidebar.markdown("---")
 st.sidebar.header("Support This Project")
-st.sidebar.write("If you found this tool helpful, consider a small donation.")
+st.sidebar.write("If you found this tool helpful, consider a small btc donation.")
 # Replace with your actual QR code image URL or file path
 st.sidebar.image("https://i.imgur.com/s9qF28O.png", width=150)
 
