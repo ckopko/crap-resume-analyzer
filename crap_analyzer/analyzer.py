@@ -3,18 +3,29 @@ import google.generativeai as genai
 import pandas as pd
 import json
 from sentence_transformers import SentenceTransformer, util
+from .schemas import ParsedResume # Import from the same directory
 
-# --- Define our models once at the top ---
+# --- Configure the Gemini client and define models ---
+# This block correctly loads your key from secrets.toml
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+except (KeyError, Exception):
+    st.error("🚨 Gemini API key not found in secrets.toml.", icon="🔥")
+    st.stop()
+
+# Define our models once at the top
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-# --- UPDATED: Using the gemini-2.5-pro model ---
-generative_model = genai.GenerativeModel('gemini-2.5-pro')
+generative_model = genai.GenerativeModel('gemini-1.5-pro-latest') # Updated model name
+
+# --- All of your original, powerful functions remain ---
 
 @st.cache_data
 def extract_skills_from_text(text: str):
     """Uses the generative model to extract a list of skills."""
     prompt = f"""
-    You are an expert in parsing job descriptions across ALL industries.
-    Your task is to meticulously extract every distinct skill, qualification, certification, and required experience from the provided text.
+    You are an expert in parsing job descriptions and resumes.
+    Your task is to meticulously extract every distinct skill, qualification, technology, and certification from the provided text.
     Return a clean, JSON-formatted list of unique skills.
 
     Text to Analyze:
@@ -43,32 +54,36 @@ def analyze_skills_alignment(resume_skills: list, jd_skills: list, threshold=0.6
     similarity_matrix = util.cos_sim(resume_embeddings, jd_embeddings)
 
     missing_skills = []
-    for i in range(len(jd_skills)):
-        best_resume_match_score = similarity_matrix[:, i].max().item()
-        if best_resume_match_score < threshold:
-            missing_skills.append(jd_skills[i])
+    jd_matched_indices = set()
+    for jd_idx, jd_skill in enumerate(jd_skills):
+        best_match_score = similarity_matrix[:, jd_idx].max().item()
+        if best_match_score < threshold:
+            missing_skills.append(jd_skill)
+        else:
+            jd_matched_indices.add(jd_idx)
 
     matched_skills = []
-    matched_jd_indices = set()
-    for i in range(len(resume_skills)):
-        best_jd_match_score = similarity_matrix[i].max().item()
-        if best_jd_match_score >= threshold:
-            jd_index = similarity_matrix[i].argmax().item()
-            if jd_index not in matched_jd_indices:
-                matched_skills.append({
-                    "Your Skill": resume_skills[i].title(),
-                    "Required Skill": jd_skills[jd_index].title()
+    unique_skills = []
+    for resume_idx, resume_skill in enumerate(resume_skills):
+        best_match_score = similarity_matrix[resume_idx].max().item()
+        if best_match_score >= threshold:
+            jd_idx = similarity_matrix[resume_idx].argmax().item()
+            if jd_idx in jd_matched_indices:
+                 matched_skills.append({
+                    "Your Skill": resume_skill.title(),
+                    "Required Skill": jd_skills[jd_idx].title()
                 })
-                matched_jd_indices.add(jd_index)
-    
-    matched_resume_skills = {match['Your Skill'].lower() for match in matched_skills}
-    unique_skills = [skill for skill in resume_skills if skill.lower() not in matched_resume_skills]
+            else:
+                 unique_skills.append(resume_skill)
+        else:
+            unique_skills.append(resume_skill)
 
     return {
         "matched_skills": matched_skills,
-        "missing_skills": sorted(missing_skills),
-        "unique_skills": sorted(unique_skills)
+        "missing_skills": sorted(list(set(missing_skills))),
+        "unique_skills": sorted(list(set(unique_skills)))
     }
+
 
 @st.cache_data
 def filter_relevant_skills(unique_skills: list, jd_text: str):
@@ -77,11 +92,11 @@ def filter_relevant_skills(unique_skills: list, jd_text: str):
         return []
         
     prompt = f"""
-    You are an expert career coach and hiring manager. A candidate has the following unique skills that are NOT explicitly required by the job description: {unique_skills}.
-    The job description context is as follows: "{jd_text[:1500]}"
+    You are an expert career coach. A candidate has the following unique skills that are NOT explicitly required by the job description: {unique_skills}.
+    The job description context is: "{jd_text[:1500]}"
 
-    Your task is to identify which of these unique skills are still professionally relevant and valuable as transferable skills for this type of role.
-    Filter out skills that are completely irrelevant. For example, for a Nursing role, a unique skill like 'Project Management' could be relevant for a charge nurse, but 'AS400 System' is not. For an analyst role, 'Public Speaking' is relevant, but 'Baking Bread' is not.
+    Your task is to identify which of these unique skills are still professionally relevant as transferable skills for this role.
+    Filter out skills that are irrelevant. For a Nursing role, a unique skill like 'Project Management' is relevant, but 'AS400 System' is not.
     Return a clean, JSON-formatted list of only the professionally RELEVANT skills.
     """
     try:
@@ -101,33 +116,33 @@ def generate_final_summary(analysis_result: dict, match_percentage: float):
 
     tone_instruction = ""
     if match_percentage < 0.4:
-        tone_instruction = "Your tone should be realistic and direct. Acknowledge that this is a poor match or a significant career pivot. DO NOT congratulate the user on their foundation. State clearly that substantial work is needed to bridge the gap."
+        tone_instruction = "Your tone should be realistic and direct. Acknowledge this is a poor match. State clearly that substantial work is needed."
     elif match_percentage < 0.7:
-        tone_instruction = "Your tone should be encouraging but realistic. Acknowledge the foundational skills the user has, but be clear about the specific gaps that need to be addressed to become a strong candidate."
+        tone_instruction = "Your tone should be encouraging but realistic. Acknowledge the foundational skills, but be clear about the specific gaps."
     else:
-        tone_instruction = "Your tone should be very positive and congratulatory. Focus on how the user can leverage their strong alignment to secure an interview."
+        tone_instruction = "Your tone should be very positive and congratulatory. Focus on leveraging their strong alignment."
 
     prompt = f"""
-    You are an expert, realistic, and strategic career coach. Your task is to generate a comprehensive, multi-section coaching report in Markdown format.
+    You are an expert career coach. Generate a comprehensive coaching report in Markdown.
 
-    Here is the data for your analysis:
-    - OVERALL MATCH SCORE: {match_percentage:.0%}
-    - MATCHED SKILLS: {matched_text if matched_text else "None"}
-    - MISSING SKILLS: {missing_text if missing_text else "None"}
-    - RELEVANT UNIQUE SKILLS: {unique_text if unique_text else "None"}
+    Data:
+    - MATCH SCORE: {match_percentage:.0%}
+    - MATCHED SKILLS: {matched_text or "None"}
+    - MISSING SKILLS: {missing_text or "None"}
+    - RELEVANT UNIQUE SKILLS: {unique_text or "None"}
 
-    **Your Tone:** {tone_instruction}
+    **Tone:** {tone_instruction}
 
-    Please generate the report with the following sections:
+    Generate the report with these sections:
 
     ### Overall Summary
-    Based on your assigned tone, write a concise, two-paragraph summary. Address the overall alignment and the most critical gap or strength.
+    Write a concise summary based on your assigned tone.
 
     ### Action Plan for Missing Skills
-    Analyze the 'MISSING SKILLS' list. For the top 3 most critical missing skills or qualifications, create a bulleted list. Each bullet must include the skill, a realistic estimated time to acquire it, and a brief suggestion for how to acquire it.
+    For the top 3 most critical missing skills, create a bulleted list with the skill, a realistic time to acquire it, and a suggestion for how.
 
     ### Leveraging Your Unique Strengths
-    Analyze the 'RELEVANT UNIQUE SKILLS' list. Provide a bulleted list of 2-3 pointers on how the candidate can strategically mention these skills in an interview to stand out.
+    Provide 2-3 pointers on how to strategically mention the 'RELEVANT UNIQUE SKILLS' in an interview.
     """
     try:
         response = generative_model.generate_content(prompt)
@@ -138,37 +153,27 @@ def generate_final_summary(analysis_result: dict, match_percentage: float):
 @st.cache_data
 def generate_tailored_resume(original_resume_text: str, jd_text: str, user_clarifications: dict):
     """Generates a new, tailored resume based on user feedback."""
-    
     clarifications_text = "\n".join([f"- {skill}: {details}" for skill, details in user_clarifications.items()])
-
     prompt = f"""
-    You are an expert professional resume writer with a talent for tailoring documents to specific job descriptions.
-    Your task is to rewrite and enhance an original resume based on a job description and specific clarifications provided by the user about their skills.
+    You are an expert resume writer. Rewrite and enhance the original resume based on the job description and user clarifications.
 
-    **1. The User's Original Resume:**
+    **1. Original Resume:**
     ---
     {original_resume_text}
     ---
-
-    **2. The Target Job Description:**
+    **2. Target Job Description:**
     ---
     {jd_text}
     ---
-
-    **3. User's Clarifications on Missing Skills:**
-    (This is new information you must integrate into the new resume)
+    **3. User Clarifications on Missing Skills:**
     ---
     {clarifications_text}
     ---
-
     **Instructions:**
-    - Rewrite the original resume. Do not just summarize.
-    - **Crucially, ensure any personal identifying information from the original resume, such as the person's name, email, and phone number, is preserved and present in the new version.**
-    - Maintain a professional tone and the overall structure (Summary, Experience, Skills, etc.).
-    - For each user clarification, create a SINGLE, strong bullet point. Find the most relevant work experience entry in the original resume and add this new bullet point there. DO NOT add these clarified skills to the general 'Skills' section unless they were already present.
-    - Emphasize skills and experiences from the original resume that are highly relevant to the job description.
-    - De-emphasize or remove experiences from the original resume that are not relevant to the job description.
-    - Return only the full text of the newly written, tailored resume. Do not include any of your own commentary before or after the resume text.
+    - Rewrite the original resume, preserving personal identifying information.
+    - For each clarification, create a SINGLE, strong bullet point and add it to the most relevant work experience entry.
+    - Emphasize relevant skills and de-emphasize irrelevant ones.
+    - Return only the full text of the new resume.
     """
     try:
         response = generative_model.generate_content(prompt)
