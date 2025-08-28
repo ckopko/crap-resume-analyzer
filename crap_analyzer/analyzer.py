@@ -7,11 +7,19 @@ from .schemas import ParsedResume # Import from the same directory
 
 # --- Configure the Gemini client and define models ---
 # This block correctly loads your key from secrets.toml
+import os
+
 try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    # Try to get from environment variable first (for Render)
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    # If not found, try Streamlit secrets (for local development)
+    if not api_key:
+        api_key = st.secrets["GOOGLE_API_KEY"]
+    
     genai.configure(api_key=api_key)
 except (KeyError, Exception):
-    st.error("🚨 Gemini API key not found in secrets.toml.", icon="🔥")
+    st.error("🚨 Gemini API key not found. Please set GOOGLE_API_KEY environment variable or add to secrets.toml.", icon="🔥")
     st.stop()
 
 # Define our models once at the top
