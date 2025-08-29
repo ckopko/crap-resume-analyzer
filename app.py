@@ -18,8 +18,9 @@ st.set_page_config(
     }
 )
 
-# Add SEO meta tags
+# Add SEO meta tags with canonical URL fix
 st.markdown("""
+<link rel="canonical" href="https://www.resumedoctor.us/">
 <meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across 4 key categories. Get personalized improvement suggestions and increase your job match score.">
 <meta name="keywords" content="resume analyzer, AI resume checker, job match tool, resume optimization, ATS resume scanner, free resume analysis">
 <script type="application/ld+json">
