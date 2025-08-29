@@ -8,6 +8,36 @@ from crap_analyzer.analyzer import (
     generate_targeted_improvements
 )
 
+# SEO-optimized page config
+st.set_page_config(
+    page_title="Resume Doctor - Free AI Resume Analyzer & Job Match Tool",
+    page_icon="🩺",
+    layout="wide",
+    menu_items={
+        'About': "Free AI-powered resume analysis tool that helps you match your resume to any job description."
+    }
+)
+
+# Add SEO meta tags
+st.markdown("""
+<meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across 4 key categories. Get personalized improvement suggestions and increase your job match score.">
+<meta name="keywords" content="resume analyzer, AI resume checker, job match tool, resume optimization, ATS resume scanner, free resume analysis">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Resume Doctor",
+  "description": "Free AI-powered resume analyzer and job matching tool",
+  "url": "https://www.resumedoctor.us",
+  "applicationCategory": "BusinessApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0"
+  }
+}
+</script>
+""", unsafe_allow_html=True)
+
 def update_analysis_with_clarifications(original_analysis: dict, user_clarifications: dict):
     """
     Updates the analysis results by moving clarified skills from 'missing' to 'matched',
@@ -66,8 +96,6 @@ def update_analysis_with_clarifications(original_analysis: dict, user_clarificat
     
     return updated_analysis
 
-st.set_page_config(page_title="Resume Doctor", layout="wide")
-
 # --- Initialize Session State ---
 if "analysis_complete" not in st.session_state:
     st.session_state.analysis_complete = False
@@ -77,14 +105,36 @@ if "jd_text" not in st.session_state:
     st.session_state.jd_text = ""
 if "categorized_analysis" not in st.session_state:
     st.session_state.categorized_analysis = {}
+if "improvements_generated" not in st.session_state:
+    st.session_state.improvements_generated = False
 if "skill_clarifications_complete" not in st.session_state:
     st.session_state.skill_clarifications_complete = False
 if "all_missing_skills" not in st.session_state:
     st.session_state.all_missing_skills = {}
 
-# --- Header ---
+# --- SEO-Friendly Header and Introduction ---
 st.title("Resume Doctor 🩺")
-st.subheader("Smart, categorized analysis of your resume alignment")
+st.markdown("## Free AI Resume Analyzer & Job Match Tool")
+
+# SEO-friendly landing content
+if not st.session_state.analysis_complete:
+    st.markdown("""
+    **Get your resume analyzed in 30 seconds.** Our AI compares your resume to any job description across 4 key categories and gives you specific, actionable improvements.
+
+    ### Why Use Resume Doctor?
+    - **4-Category Analysis**: Education, Professional Skills, Soft Skills & Experience  
+    - **Smart Matching**: AI-powered semantic matching finds hidden connections
+    - **Personalized Advice**: Get specific editing instructions, not generic tips
+    - **100% Free**: No signups, no limits, no hidden fees
+
+    ### How It Works:
+    1. Upload your resume (PDF) or use our sample data
+    2. Paste any job description 
+    3. Get detailed analysis across all categories
+    4. Receive personalized improvement suggestions
+    """)
+else:
+    st.subheader("Smart, categorized analysis of your resume alignment")
 
 # --- Sidebar for Inputs ---
 st.sidebar.header("Your Documents")
@@ -111,7 +161,8 @@ def load_sample_data():
         with open("sample_jd.txt", "r") as f:
             st.session_state.jd_text = f.read()
         st.session_state.analysis_complete = False
-        st.session_state.improvements_generated = False
+        st.session_state.skill_clarifications_complete = False
+        st.session_state.all_missing_skills = {}
     except FileNotFoundError:
         st.sidebar.error("Sample files not found.")
 
@@ -417,7 +468,7 @@ if st.session_state.analysis_complete:
     # --- Improvement Suggestions (only after clarifications) ---
     if st.session_state.skill_clarifications_complete:
         st.header("🎯 Personalized Improvements")
-    
+        
         if st.button("Generate My Personalized Action Plan", type="primary"):
             with st.spinner("Creating your personalized improvements based on your clarifications..."):
                 # Use the updated analysis that includes user clarifications
@@ -486,7 +537,7 @@ if st.session_state.analysis_complete:
                     st.rerun()
 
 else:
-    # Welcome message
+    # Welcome message with SEO content
     st.info("👆 Upload your resume and paste a job description in the sidebar to get started!")
     
     col1, col2 = st.columns(2)
@@ -507,3 +558,19 @@ else:
         3. See exactly what you're missing and what you have
         4. Get specific instructions to improve your resume
         """)
+
+# --- FAQ Section for SEO ---
+st.markdown("---")
+st.subheader("Frequently Asked Questions")
+
+with st.expander("How accurate is the AI resume analysis?"):
+    st.write("Our AI uses advanced semantic matching to understand the meaning behind skills and requirements, not just keyword matching. However, we also provide an interactive clarification step where you can correct any AI mistakes.")
+
+with st.expander("What happens to my resume data?"):
+    st.write("Your resume data is processed by our AI and may be stored for service improvement purposes. Please review our complete data usage disclaimer in the sidebar for full details on how we handle your information.")
+
+with st.expander("What file formats do you support?"):
+    st.write("Currently, we support PDF resume uploads. You can also use our sample data to test the tool.")
+
+with st.expander("How is this different from other ATS checkers?"):
+    st.write("Unlike simple keyword matchers, we provide categorized analysis across 4 key areas and give you specific, actionable editing instructions rather than just a score.")
