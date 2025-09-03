@@ -18,10 +18,19 @@ st.set_page_config(
     }
 )
 
-# Add SEO meta tags with canonical URL fix
+# Add Google Analytics and SEO meta tags
 st.markdown("""
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LND7N45J3V"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LND7N45J3V');
+</script>
+
 <link rel="canonical" href="https://www.resumedoctor.us/">
-<meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across 4 key categories. Get personalized improvement suggestions and increase your job match score.">
+<meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across key categories. Get personalized improvement suggestions and increase your job match score.">
 <meta name="keywords" content="resume analyzer, AI resume checker, job match tool, resume optimization, ATS resume scanner, free resume analysis">
 <script type="application/ld+json">
 {
@@ -113,29 +122,21 @@ if "skill_clarifications_complete" not in st.session_state:
 if "all_missing_skills" not in st.session_state:
     st.session_state.all_missing_skills = {}
 
-# --- SEO-Friendly Header and Introduction ---
-st.title("Resume Doctor 🩺")
-st.markdown("## Free AI Resume Analyzer & Job Match Tool")
-
-# SEO-friendly landing content
+# --- RED BAR AT THE VERY TOP ---
 if not st.session_state.analysis_complete:
     st.markdown("""
-    **Get your resume analyzed in 30 seconds.** Our AI compares your resume to any job description across 4 key categories and gives you specific, actionable improvements.
-
-    ### Why Use Resume Doctor?
-    - **4-Category Analysis**: Education, Professional Skills, Soft Skills & Experience  
-    - **Smart Matching**: AI-powered semantic matching finds hidden connections
-    - **Personalized Advice**: Get specific editing instructions, not generic tips
-    - **100% Free**: No signups, no limits, no hidden fees
-
-    ### How It Works:
-    1. Upload your resume (PDF) or use our sample data
-    2. Paste any job description 
-    3. Get detailed analysis across all categories
-    4. Receive personalized improvement suggestions
-    """)
+    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; margin: -1rem -1rem 2rem -1rem;">
+        <h1 style="margin: 0; font-size: 2.5rem; font-weight: bold;">🚀 Ready to Get 3X More Interviews?</h1>
+        <p style="font-size: 1.3rem; margin: 1rem 0;">Upload your resume in the sidebar and see your match score instantly!</p>
+        <p style="font-size: 1rem; opacity: 0.9; margin: 0;">⬅️ Click "Load Sample Data" to try it first • <a href="https://www.jobscan.co/" target="_blank" style="color: white; text-decoration: underline;">Research shows 3X improvement</a></p>
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.subheader("Smart, categorized analysis of your resume alignment")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; margin: -1rem -1rem 1rem -1rem;">
+        <h2 style="margin: 0;">✅ Your Resume Analysis Results</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- Sidebar for Inputs ---
 st.sidebar.header("Your Documents")
@@ -211,7 +212,114 @@ st.sidebar.header("Support This Project")
 st.sidebar.write("If you found this tool helpful, consider a small BTC donation.")
 st.sidebar.image("https://i.imgur.com/s9qF28O.png", width=150)
 
-# --- Main Display ---
+# --- Main Content ---
+if not st.session_state.analysis_complete:
+    # Research-backed stats with sources
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("🎯 Tailored Resume Success", "83%", help="83% of recruiters prefer tailored resumes (Jobvite)")
+    with col2:
+        st.metric("⚡ Analysis Time", "30s", help="Get results in under 30 seconds")
+    with col3:
+        st.metric("📈 Interview Improvement", "40%", help="Tailored resumes are 40% more likely to land interviews (Journal of Applied Psychology)")
+    with col4:
+        st.metric("💰 Cost", "FREE", help="No hidden fees or sign-ups required")
+    
+    # Add credibility section with linked sources
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 10px; margin: 1rem 0; border-left: 4px solid #007bff;">
+        <h4 style="color: #007bff; margin-top: 0;">📈 Research Shows Tailored Resumes Work</h4>
+        <p style="margin-bottom: 0;">
+            <a href="https://enhancv.com/blog/resume-statistics/" target="_blank" style="color: #007bff;">Studies show</a> tailored resumes are 
+            <strong>40% more likely to land interviews</strong> and <strong>83% of recruiters prefer them</strong>. 
+            <a href="https://www.jobscan.co/" target="_blank" style="color: #007bff;">Tools like ours</a> help users land 
+            <strong>3X more interviews</strong> by optimizing resume-job matching.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Immediate value proposition
+    st.markdown("""
+    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 1rem 0; color: white;">
+        <h2 style="margin: 0; font-size: 1.8rem;">⚡ Stop Sending Resumes Into the Black Hole</h2>
+        <p style="font-size: 1.2rem; margin: 0.5rem 0 0 0;">Get your exact match score in 30 seconds and see precisely what's missing</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Problem/Solution hook with research backing
+    st.markdown("""
+    ### 🎯 Only 2-3% of Resumes Get Interviews - Here's Why
+    
+    Most resumes fail because they don't align with what employers actually want. The data is clear:
+    """)
+    
+    # Visual comparison - CONDENSED
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div style="background-color: #fff5f5; padding: 1rem; border-radius: 8px; border-left: 4px solid #f56565;">
+        <h4 style="color: #c53030; margin-top: 0;">❌ What You're Doing Now</h4>
+        <ul style="margin-bottom: 0;">
+        <li>"Use action words"</li>
+        <li>"Keep it to one page"</li>  
+        <li>"Tailor it somehow"</li>
+        </ul>
+        <p style="margin: 0.5rem 0 0 0;"><strong>Result: Still no interviews</strong></p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background-color: #f0fff4; padding: 1rem; border-radius: 8px; border-left: 4px solid #48bb78;">
+        <h4 style="color: #2d7d32; margin-top: 0;">✅ What Resume Doctor Shows You</h4>
+        <ul style="margin-bottom: 0;">
+        <li>"Add 'SQL' to your skills section"</li>
+        <li>"Emphasize 'team leadership' in role #2"</li>
+        <li>"Missing: 'Agile methodology' experience"</li>
+        </ul>
+        <p style="margin: 0.5rem 0 0 0;"><strong>Result: Specific, actionable fixes</strong></p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Add clear separation
+    st.markdown("---")
+    st.markdown("### 🎯 What You'll Get")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        **📊 Your Exact Results:**
+        - See your % alignment across all key areas
+        - Compare your skills vs. job requirements  
+        - Identify your strongest selling points
+        - Specific skills the job wants that you're missing
+        - Experience gaps to address
+        - Skills that match perfectly
+        - Hidden strengths to emphasize
+        """)
+    
+    with col2:
+        st.markdown("""
+        **🎯 Exact Fix Instructions:**  
+        - "Add this to line 3 of your experience"
+        - "Move SQL to top of skills list"
+        - "Emphasize leadership in role #2"
+        - Simple process: Upload → Paste → Analyze → Fix
+        - 30-second AI analysis across all areas
+        - No generic advice - specific editing instructions
+        """)
+    
+    # Updated trust indicators - removed privacy claim
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**📊 Research-Backed**<br><a href='https://enhancv.com/blog/resume-statistics/' target='_blank'>83% of recruiters prefer tailored resumes</a>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("**⚡ 30 Second Analysis**<br>Instant results across all key areas", unsafe_allow_html=True) 
+    with col3:
+        st.markdown("**🆓 Completely Free**<br>No account or payments required", unsafe_allow_html=True)
+
+# --- Main Display (Analysis Results) ---
 if st.session_state.analysis_complete:
     analysis = st.session_state.categorized_analysis
     
@@ -537,29 +645,6 @@ if st.session_state.analysis_complete:
                     st.session_state.skill_clarifications_complete = True
                     st.rerun()
 
-else:
-    # Welcome message with SEO content
-    st.info("👆 Upload your resume and paste a job description in the sidebar to get started!")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("""
-        ### What You'll Get:
-        - **Categorized Analysis**: Education, professional skills, soft skills, and experience
-        - **Smart Matching**: AI-powered semantic matching across all categories  
-        - **Actionable Insights**: Specific recommendations for each category
-        - **Targeted Improvements**: Precise editing instructions instead of full rewrites
-        """)
-    
-    with col2:
-        st.markdown("""
-        ### How It Works:
-        1. Upload your resume (PDF) and paste the job description
-        2. Get a detailed breakdown across 4 key categories
-        3. See exactly what you're missing and what you have
-        4. Get specific instructions to improve your resume
-        """)
-
 # --- FAQ Section for SEO ---
 st.markdown("---")
 st.subheader("Frequently Asked Questions")
@@ -574,4 +659,4 @@ with st.expander("What file formats do you support?"):
     st.write("Currently, we support PDF resume uploads. You can also use our sample data to test the tool.")
 
 with st.expander("How is this different from other ATS checkers?"):
-    st.write("Unlike simple keyword matchers, we provide categorized analysis across 4 key areas and give you specific, actionable editing instructions rather than just a score.")
+    st.write("Unlike simple keyword matchers, we provide categorized analysis across key areas and give you specific, actionable editing instructions rather than just a score.")
