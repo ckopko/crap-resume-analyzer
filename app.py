@@ -20,22 +20,13 @@ st.set_page_config(
 
 # Add Google Analytics and SEO meta tags
 st.markdown("""
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-LND7N45J3V"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-LND7N45J3V');
-</script>
-
 <link rel="canonical" href="https://www.resumedoctor.us/">
 <meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across key categories. Get personalized improvement suggestions and increase your job match score.">
 <meta name="keywords" content="resume analyzer, AI resume checker, job match tool, resume optimization, ATS resume scanner, free resume analysis">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
+  "@type": "WebApplication", 
   "name": "Resume Doctor",
   "description": "Free AI-powered resume analyzer and job matching tool",
   "url": "https://www.resumedoctor.us",
@@ -47,6 +38,18 @@ st.markdown("""
 }
 </script>
 """, unsafe_allow_html=True)
+
+# Try Google Analytics with a different approach
+st.html("""
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LND7N45J3V"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LND7N45J3V');
+</script>
+""")
 
 def update_analysis_with_clarifications(original_analysis: dict, user_clarifications: dict):
     """
