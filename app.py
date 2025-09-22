@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from crap_analyzer.parser import extract_text_from_pdf
 from crap_analyzer.analyzer import (
@@ -18,8 +19,8 @@ st.set_page_config(
     }
 )
 
-# Google Analytics - IMPROVED VERSION
-st.html("""
+# Google Analytics - Fixed Version Using components.html
+components.html("""
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
 <script>
@@ -32,13 +33,16 @@ st.html("""
     send_page_view: true
   });
   
+  // Debug message
+  console.log('Google Analytics loaded successfully via components.html');
+  
   // Track initial page load
   gtag('event', 'page_view', {
     page_title: 'Resume Doctor - Home',
     page_location: window.location.href
   });
 </script>
-""")
+""", height=0)
 
 # Add SEO meta tags and structured data
 st.markdown("""
@@ -61,23 +65,23 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# Google Analytics Event Tracking Functions
+# Google Analytics Event Tracking Functions - Fixed Version
 def track_event(event_name, event_category="engagement", event_label="", value=None):
-    """Generic function to track events"""
-    event_params = {
-        'event_category': event_category,
-        'event_label': event_label
-    }
+    """Generic function to track events using components.html"""
+    event_params_str = f"'event_category': '{event_category}', 'event_label': '{event_label}'"
     if value is not None:
-        event_params['value'] = value
+        event_params_str += f", 'value': {value}"
         
-    st.html(f"""
+    components.html(f"""
     <script>
     if (typeof gtag !== 'undefined') {{
-        gtag('event', '{event_name}', {event_params});
+        gtag('event', '{event_name}', {{{event_params_str}}});
+        console.log('Event tracked: {event_name}');
+    }} else {{
+        console.warn('gtag not available for event: {event_name}');
     }}
     </script>
-    """)
+    """, height=0)
 
 def track_sample_data_loaded():
     track_event('sample_data_loaded', 'engagement', 'demo_usage')
