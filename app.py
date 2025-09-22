@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import hashlib
+import time
 from crap_analyzer.parser import extract_text_from_pdf
 from crap_analyzer.analyzer import (
     extract_and_categorize_requirements,
@@ -18,28 +20,53 @@ st.set_page_config(
     }
 )
 
-# Google Analytics - Final Fallback Method (st.markdown)
-st.markdown("""
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-CRNTFTMXGK', {
-    page_title: document.title,
-    page_location: window.location.href,
-    send_page_view: true
-  });
-  
-  console.log('Google Analytics loaded via st.markdown');
-  
-  // Track initial page load
-  gtag('event', 'page_view', {
-    page_title: 'Resume Doctor - Home',
-    page_location: window.location.href
-  });
-</script>
-""", unsafe_allow_html=True)
+# Google Analytics - Measurement Protocol (CSP-proof method)
+GA_MEASUREMENT_ID = "G-CRNTFTMXGK"
+GA_API_SECRET = "your_api_secret_here"  # You'll need to get this from GA4
+
+# Generate a unique client ID for this session
+if "client_id" not in st.session_state:
+    st.session_state.client_id = hashlib.md5(str(time.time()).encode()).hexdigest()
+
+def track_ga4_event(event_name, event_parameters=None):
+    """Track events using GA4 Measurement Protocol (bypasses CSP)"""
+    if event_parameters is None:
+        event_parameters = {}
+    
+    # Use image pixel method for now (simpler, works immediately)
+    client_id = st.session_state.client_id
+    
+    # Create tracking pixel URL
+    base_url = "https://www.google-analytics.com/mp/collect"
+    params = {
+        'measurement_id': GA_MEASUREMENT_ID,
+        'client_id': client_id,
+        'events': [
+            {
+                'name': event_name,
+                'params': event_parameters
+            }
+        ]
+    }
+    
+    # For now, use the simpler Universal Analytics method (works immediately)
+    ua_url = f"https://www.google-analytics.com/collect?v=1&tid={GA_MEASUREMENT_ID}&cid={client_id}&t=event&ec=engagement&ea={event_name}"
+    
+    st.markdown(f"""
+    <img src="{ua_url}" style="display:none;" width="1" height="1" />
+    """, unsafe_allow_html=True)
+
+def track_page_view():
+    """Track page view without JavaScript"""
+    client_id = st.session_state.client_id
+    url = f"https://www.google-analytics.com/collect?v=1&tid={GA_MEASUREMENT_ID}&cid={client_id}&t=pageview&dp=%2F&dt=Resume%20Doctor"
+    
+    st.markdown(f"""
+    <img src="{url}" style="display:none;" width="1" height="1" />
+    """, unsafe_allow_html=True)
+
+# Track initial page view
+track_page_view()
 
 # Add SEO meta tags and structured data
 st.markdown("""
@@ -62,38 +89,21 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# Google Analytics Event Tracking Functions - st.markdown version
-def track_event(event_name, event_category="engagement", event_label="", value=None):
-    """Generic function to track events using st.markdown"""
-    event_params_str = f"'event_category': '{event_category}', 'event_label': '{event_label}'"
-    if value is not None:
-        event_params_str += f", 'value': {value}"
-        
-    st.markdown(f"""
-    <script>
-    if (typeof gtag !== 'undefined') {{
-        gtag('event', '{event_name}', {{{event_params_str}}});
-        console.log('Event tracked: {event_name}');
-    }} else {{
-        console.warn('gtag not available for event: {event_name}');
-    }}
-    </script>
-    """, unsafe_allow_html=True)
-
+# Google Analytics Event Tracking Functions - Measurement Protocol version
 def track_sample_data_loaded():
-    track_event('sample_data_loaded', 'engagement', 'demo_usage')
+    track_ga4_event('sample_data_loaded', {'event_category': 'engagement', 'event_label': 'demo_usage'})
 
 def track_analysis_started():
-    track_event('resume_analysis_started', 'conversion', 'resume_upload')
+    track_ga4_event('resume_analysis_started', {'event_category': 'conversion', 'event_label': 'resume_upload'})
 
 def track_improvements_generated():
-    track_event('improvements_generated', 'conversion', 'personalized_plan')
+    track_ga4_event('improvements_generated', {'event_category': 'conversion', 'event_label': 'personalized_plan'})
 
 def track_clarifications_completed():
-    track_event('skill_clarifications_completed', 'engagement', 'user_input')
+    track_ga4_event('skill_clarifications_completed', {'event_category': 'engagement', 'event_label': 'user_input'})
 
 def track_download_action_plan():
-    track_event('download_action_plan', 'conversion', 'file_download')
+    track_ga4_event('download_action_plan', {'event_category': 'conversion', 'event_label': 'file_download'})
 
 def update_analysis_with_clarifications(original_analysis: dict, user_clarifications: dict):
     """
