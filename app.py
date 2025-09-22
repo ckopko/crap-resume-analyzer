@@ -18,7 +18,29 @@ st.set_page_config(
     }
 )
 
-# Add Google Analytics and SEO meta tags
+# Google Analytics - IMPROVED VERSION
+st.html("""
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-CRNTFTMXGK', {
+    page_title: document.title,
+    page_location: window.location.href,
+    send_page_view: true
+  });
+  
+  // Track initial page load
+  gtag('event', 'page_view', {
+    page_title: 'Resume Doctor - Home',
+    page_location: window.location.href
+  });
+</script>
+""")
+
+# Add SEO meta tags and structured data
 st.markdown("""
 <link rel="canonical" href="https://www.resumedoctor.us/">
 <meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across key categories. Get personalized improvement suggestions and increase your job match score.">
@@ -39,17 +61,38 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# Try Google Analytics with a different approach
-st.html("""
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-LND7N45J3V"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-LND7N45J3V');
-</script>
-""")
+# Google Analytics Event Tracking Functions
+def track_event(event_name, event_category="engagement", event_label="", value=None):
+    """Generic function to track events"""
+    event_params = {
+        'event_category': event_category,
+        'event_label': event_label
+    }
+    if value is not None:
+        event_params['value'] = value
+        
+    st.html(f"""
+    <script>
+    if (typeof gtag !== 'undefined') {{
+        gtag('event', '{event_name}', {event_params});
+    }}
+    </script>
+    """)
+
+def track_sample_data_loaded():
+    track_event('sample_data_loaded', 'engagement', 'demo_usage')
+
+def track_analysis_started():
+    track_event('resume_analysis_started', 'conversion', 'resume_upload')
+
+def track_improvements_generated():
+    track_event('improvements_generated', 'conversion', 'personalized_plan')
+
+def track_clarifications_completed():
+    track_event('skill_clarifications_completed', 'engagement', 'user_input')
+
+def track_download_action_plan():
+    track_event('download_action_plan', 'conversion', 'file_download')
 
 def update_analysis_with_clarifications(original_analysis: dict, user_clarifications: dict):
     """
@@ -168,10 +211,13 @@ def load_sample_data():
         st.session_state.analysis_complete = False
         st.session_state.skill_clarifications_complete = False
         st.session_state.all_missing_skills = {}
+        track_sample_data_loaded()  # Track this event
     except FileNotFoundError:
         st.sidebar.error("Sample files not found.")
 
-st.sidebar.button("Load Sample Data 🧪", on_click=load_sample_data)
+if st.sidebar.button("Load Sample Data 🧪", on_click=load_sample_data):
+    pass
+
 st.sidebar.markdown("---")
 
 uploaded_resume = st.sidebar.file_uploader("Upload Your Resume (PDF)", type=["pdf"])
@@ -186,6 +232,8 @@ if st.sidebar.button("Analyze Resume", type="primary"):
         resume_text_to_analyze = st.session_state.resume_text_from_sample
 
     if resume_text_to_analyze and st.session_state.jd_text:
+        track_analysis_started()  # Track this event
+        
         with st.spinner("Analyzing your resume across multiple categories..."):
             # Reset state
             st.session_state.improvements_generated = False
@@ -530,6 +578,7 @@ if st.session_state.analysis_complete:
         if st.button("Apply My Clarifications", type="primary"):
             st.session_state.user_clarifications = user_clarifications
             st.session_state.skill_clarifications_complete = True
+            track_clarifications_completed()  # Track this event
             st.rerun()
     
     elif st.session_state.skill_clarifications_complete:
@@ -597,6 +646,7 @@ if st.session_state.analysis_complete:
                 )
                 st.session_state.improvements = improvements
                 st.session_state.improvements_generated = True
+                track_improvements_generated()  # Track this event
                 st.rerun()
         
         if st.session_state.improvements_generated:
@@ -622,12 +672,13 @@ if st.session_state.analysis_complete:
                 for i, imp in enumerate(improvements, 1)
             ])
             
-            st.download_button(
+            if st.download_button(
                 "Download Personalized Action Plan",
                 improvements_text,
                 file_name="personalized_resume_plan.txt",
                 mime="text/plain"
-            )
+            ):
+                track_download_action_plan()  # Track download event
     
     else:
         # If no missing skills, skip directly to improvements
@@ -646,6 +697,7 @@ if st.session_state.analysis_complete:
                     st.session_state.improvements = improvements
                     st.session_state.improvements_generated = True
                     st.session_state.skill_clarifications_complete = True
+                    track_improvements_generated()  # Track this event
                     st.rerun()
 
 # --- FAQ Section for SEO ---
