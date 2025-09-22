@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from crap_analyzer.parser import extract_text_from_pdf
 from crap_analyzer.analyzer import (
@@ -19,9 +18,8 @@ st.set_page_config(
     }
 )
 
-# Google Analytics - Fixed Version Using components.html
-components.html("""
-<!-- Google tag (gtag.js) -->
+# Google Analytics - Final Fallback Method (st.markdown)
+st.markdown("""
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -33,8 +31,7 @@ components.html("""
     send_page_view: true
   });
   
-  // Debug message
-  console.log('Google Analytics loaded successfully via components.html');
+  console.log('Google Analytics loaded via st.markdown');
   
   // Track initial page load
   gtag('event', 'page_view', {
@@ -42,7 +39,7 @@ components.html("""
     page_location: window.location.href
   });
 </script>
-""", height=0)
+""", unsafe_allow_html=True)
 
 # Add SEO meta tags and structured data
 st.markdown("""
@@ -65,14 +62,14 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# Google Analytics Event Tracking Functions - Fixed Version
+# Google Analytics Event Tracking Functions - st.markdown version
 def track_event(event_name, event_category="engagement", event_label="", value=None):
-    """Generic function to track events using components.html"""
+    """Generic function to track events using st.markdown"""
     event_params_str = f"'event_category': '{event_category}', 'event_label': '{event_label}'"
     if value is not None:
         event_params_str += f", 'value': {value}"
         
-    components.html(f"""
+    st.markdown(f"""
     <script>
     if (typeof gtag !== 'undefined') {{
         gtag('event', '{event_name}', {{{event_params_str}}});
@@ -81,7 +78,7 @@ def track_event(event_name, event_category="engagement", event_label="", value=N
         console.warn('gtag not available for event: {event_name}');
     }}
     </script>
-    """, height=0)
+    """, unsafe_allow_html=True)
 
 def track_sample_data_loaded():
     track_event('sample_data_loaded', 'engagement', 'demo_usage')
