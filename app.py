@@ -18,8 +18,10 @@ st.set_page_config(
     }
 )
 
-# Google Analytics - EXACTLY as Google provided it, but injected properly for Streamlit
-st.components.v1.html("""
+# Google Analytics - Direct injection into page header
+# This is the most direct way and should bypass all CSP issues
+st.markdown("""
+<head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
 <script>
@@ -28,77 +30,118 @@ st.components.v1.html("""
   gtag('js', new Date());
   gtag('config', 'G-CRNTFTMXGK');
   
-  // Send a test event to confirm it's working
+  console.log('Google Analytics loaded directly');
+  
+  // Track page view immediately
   gtag('event', 'page_view', {
     page_title: 'Resume Doctor',
     page_location: window.location.href
   });
-  
-  console.log('Google Analytics loaded successfully');
-  
-  // Make gtag available to parent window (this might help with CSP)
-  if (window.parent && window.parent !== window) {
-    window.parent.gtag = gtag;
+</script>
+</head>
+""", unsafe_allow_html=True)
+
+# Alternative: Add to body if head doesn't work
+st.markdown("""
+<!-- Google tag (gtag.js) - Body injection -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK"></script>
+<script>
+  if (typeof window.dataLayer === 'undefined') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-CRNTFTMXGK');
+    
+    console.log('Google Analytics loaded in body');
   }
 </script>
-""", height=0)
+""", unsafe_allow_html=True)
 
-# Simple event tracking functions using st.components.v1.html
-def track_event(event_name, parameters=None):
+# Manual tracking functions
+def track_event_direct(event_name, parameters=None):
     if parameters is None:
         parameters = {}
     
-    # Convert parameters to JavaScript object string
-    params_js = ", ".join([f"'{k}': '{v}'" for k, v in parameters.items()])
+    # Convert parameters to JavaScript
+    params_str = ", ".join([f"'{k}': '{v}'" for k, v in parameters.items()])
     
-    st.components.v1.html(f"""
+    st.markdown(f"""
     <script>
-    if (typeof gtag !== 'undefined') {{
-        gtag('event', '{event_name}', {{{params_js}}});
-        console.log('Event tracked: {event_name}');
-    }} else if (window.parent && typeof window.parent.gtag !== 'undefined') {{
-        window.parent.gtag('event', '{event_name}', {{{params_js}}});
-        console.log('Event tracked via parent: {event_name}');
-    }} else {{
-        console.warn('gtag not available for event: {event_name}');
-    }}
+    // Wait a moment for gtag to load, then fire event
+    setTimeout(function() {{
+        if (typeof gtag !== 'undefined') {{
+            gtag('event', '{event_name}', {{{params_str}}});
+            console.log('✅ Event tracked: {event_name}');
+        }} else {{
+            console.warn('❌ gtag still not available for: {event_name}');
+            
+            // Try to load gtag manually if it's not there
+            if (!document.querySelector('script[src*="gtag"]')) {{
+                var script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://www.googletagmanager.com/gtag/js?id=G-CRNTFTMXGK';
+                document.head.appendChild(script);
+                
+                script.onload = function() {{
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){{dataLayer.push(arguments);}}
+                    gtag('js', new Date());
+                    gtag('config', 'G-CRNTFTMXGK');
+                    gtag('event', '{event_name}', {{{params_str}}});
+                    console.log('✅ Late-loaded and tracked: {event_name}');
+                }};
+            }}
+        }}
+    }}, 1000);
     </script>
-    """, height=0)
+    """, unsafe_allow_html=True)
 
+# Debug button - let's see what's happening
+if st.sidebar.button("🔍 Debug GA Status"):
+    st.markdown("""
+    <script>
+    console.log('=== GA DEBUG INFO ===');
+    console.log('gtag function available:', typeof gtag !== 'undefined');
+    console.log('dataLayer exists:', typeof dataLayer !== 'undefined');
+    console.log('dataLayer contents:', dataLayer);
+    console.log('GA scripts in page:', document.querySelectorAll('script[src*="gtag"]').length);
+    console.log('All scripts:', Array.from(document.scripts).map(s => s.src).filter(s => s.includes('google')));
+    
+    // Try to send a test event
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'debug_test', {
+            'debug_from': 'streamlit_button'
+        });
+        console.log('✅ Debug event sent successfully');
+    } else {
+        console.log('❌ gtag not available for debug test');
+    }
+    </script>
+    """, unsafe_allow_html=True)
+    
+    st.sidebar.success("Debug info logged to console - check F12!")
+
+# Simple tracking functions
 def track_sample_data_loaded():
-    track_event('sample_data_loaded', {'event_category': 'engagement', 'event_label': 'demo_usage'})
+    track_event_direct('sample_data_loaded', {'event_category': 'engagement'})
 
 def track_analysis_started():
-    track_event('resume_analysis_started', {'event_category': 'conversion', 'event_label': 'resume_upload'})
+    track_event_direct('resume_analysis_started', {'event_category': 'conversion'})
 
 def track_improvements_generated():
-    track_event('improvements_generated', {'event_category': 'conversion', 'event_label': 'personalized_plan'})
+    track_event_direct('improvements_generated', {'event_category': 'conversion'})
 
 def track_clarifications_completed():
-    track_event('skill_clarifications_completed', {'event_category': 'engagement', 'event_label': 'user_input'})
+    track_event_direct('skill_clarifications_completed', {'event_category': 'engagement'})
 
 def track_download_action_plan():
-    track_event('download_action_plan', {'event_category': 'conversion', 'event_label': 'file_download'})
+    track_event_direct('download_action_plan', {'event_category': 'conversion'})
 
-# Add SEO meta tags and structured data
+# Add SEO meta tags
 st.markdown("""
 <link rel="canonical" href="https://www.resumedoctor.us/">
 <meta name="description" content="Free AI resume analyzer that compares your resume to job descriptions across key categories. Get personalized improvement suggestions and increase your job match score.">
 <meta name="keywords" content="resume analyzer, AI resume checker, job match tool, resume optimization, ATS resume scanner, free resume analysis">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication", 
-  "name": "Resume Doctor",
-  "description": "Free AI-powered resume analyzer and job matching tool",
-  "url": "https://www.resumedoctor.us",
-  "applicationCategory": "BusinessApplication",
-  "offers": {
-    "@type": "Offer",
-    "price": "0"
-  }
-}
-</script>
 """, unsafe_allow_html=True)
 
 def update_analysis_with_clarifications(original_analysis: dict, user_clarifications: dict):
@@ -146,14 +189,13 @@ def update_analysis_with_clarifications(original_analysis: dict, user_clarificat
         updated_data["matched"] = matched_skills
         
         # FIXED: Keep the original match percentage calculation
-        # Don't artificially inflate by removing X'd skills from denominator
         original_total = len(category_data.get("missing", [])) + len(category_data.get("matched", []))
         current_matched = len(matched_skills)
         
         if original_total > 0:
             updated_data["match_percentage"] = current_matched / original_total
         else:
-            updated_data["match_percentage"] = category_data.get("match_percentage", 0.0)  # Keep original if no requirements
+            updated_data["match_percentage"] = category_data.get("match_percentage", 0.0)
         
         updated_analysis[category_key] = updated_data
     
@@ -175,43 +217,13 @@ if "skill_clarifications_complete" not in st.session_state:
 if "all_missing_skills" not in st.session_state:
     st.session_state.all_missing_skills = {}
 
-# --- RED BAR AT THE VERY TOP ---
-if not st.session_state.analysis_complete:
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; margin: -1rem -1rem 2rem -1rem;">
-        <h1 style="margin: 0; font-size: 2.5rem; font-weight: bold;">🚀 Ready to Get 3X More Interviews?</h1>
-        <p style="font-size: 1.3rem; margin: 1rem 0;">Upload your resume in the sidebar and see your match score instantly!</p>
-        <p style="font-size: 1rem; opacity: 0.9; margin: 0;">⬅️ Click "Load Sample Data" to try it first • <a href="https://www.jobscan.co/" target="_blank" style="color: white; text-decoration: underline;">Research shows 3X improvement</a></p>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; margin: -1rem -1rem 1rem -1rem;">
-        <h2 style="margin: 0;">✅ Your Resume Analysis Results</h2>
-    </div>
-    """, unsafe_allow_html=True)
-
 # --- Sidebar for Inputs ---
 st.sidebar.header("Your Documents")
 
-# Test button
-if st.sidebar.button("🧪 Test Analytics"):
-    track_event('manual_test', {'test': 'sidebar_button'})
-    st.sidebar.success("Test event sent! Check Real-Time reports.")
-
-# --- Legal Disclaimer ---
-st.sidebar.markdown("---")
-with st.sidebar.expander("⚠️ **Data Usage Disclaimer**"):
-    st.markdown("""
-    **Important:** By using this tool, you acknowledge:
-    
-    - All uploaded resumes and job descriptions are processed and may be stored for service improvement
-    - You are responsible for ensuring you have the right to share any content you upload
-    - Do not upload confidential, proprietary, or sensitive information belonging to others
-    - We are not liable for any misuse of information you choose to submit
-    - By clicking "Analyze Resume" you consent to these terms
-    """)
-st.sidebar.markdown("---")
+# Test button with immediate feedback
+if st.sidebar.button("🧪 Test GA Tracking"):
+    track_event_direct('manual_test', {'source': 'sidebar_button'})
+    st.sidebar.success("Test event sent! Check console and Real-Time reports.")
 
 # --- Sample Data Loader ---
 def load_sample_data():
@@ -269,60 +281,52 @@ if st.sidebar.button("Analyze Resume", type="primary"):
     else:
         st.sidebar.error("Please provide both a resume and a job description.")
 
-# --- Sidebar donation section ---
-st.sidebar.markdown("---")
-st.sidebar.header("Support This Project")
-st.sidebar.write("If you found this tool helpful, consider a small BTC donation.")
-st.sidebar.image("https://i.imgur.com/s9qF28O.png", width=150)
-
 # --- Main Content ---
 if not st.session_state.analysis_complete:
-    # Research-backed stats with sources
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; margin: -1rem -1rem 2rem -1rem;">
+        <h1 style="margin: 0; font-size: 2.5rem; font-weight: bold;">🚀 Ready to Get 3X More Interviews?</h1>
+        <p style="font-size: 1.3rem; margin: 1rem 0;">Upload your resume in the sidebar and see your match score instantly!</p>
+        <p style="font-size: 1rem; opacity: 0.9; margin: 0;">⬅️ Click "Load Sample Data" to try it first</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Research-backed stats
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("🎯 Tailored Resume Success", "83%", help="83% of recruiters prefer tailored resumes (Jobvite)")
+        st.metric("🎯 Tailored Resume Success", "83%", help="83% of recruiters prefer tailored resumes")
     with col2:
         st.metric("⚡ Analysis Time", "30s", help="Get results in under 30 seconds")
     with col3:
-        st.metric("📈 Interview Improvement", "40%", help="Tailored resumes are 40% more likely to land interviews (Journal of Applied Psychology)")
+        st.metric("📈 Interview Improvement", "40%", help="Tailored resumes are 40% more likely to land interviews")
     with col4:
         st.metric("💰 Cost", "FREE", help="No hidden fees or sign-ups required")
-    
-    # Add credibility section with linked sources
+
+else:
     st.markdown("""
-    <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 10px; margin: 1rem 0; border-left: 4px solid #007bff;">
-        <h4 style="color: #007bff; margin-top: 0;">📈 Research Shows Tailored Resumes Work</h4>
-        <p style="margin-bottom: 0;">
-            <a href="https://enhancv.com/blog/resume-statistics/" target="_blank" style="color: #007bff;">Studies show</a> tailored resumes are 
-            <strong>40% more likely to land interviews</strong> and <strong>83% of recruiters prefer them</strong>. 
-            <a href="https://www.jobscan.co/" target="_blank" style="color: #007bff;">Tools like ours</a> help users land 
-            <strong>3X more interviews</strong> by optimizing resume-job matching.
-        </p>
+    <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; margin: -1rem -1rem 1rem -1rem;">
+        <h2 style="margin: 0;">✅ Your Resume Analysis Results</h2>
     </div>
     """, unsafe_allow_html=True)
     
-    # Continue with rest of your existing content...
-    st.markdown("""
-    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin: 1rem 0; color: white;">
-        <h2 style="margin: 0; font-size: 1.8rem;">⚡ Stop Sending Resumes Into the Black Hole</h2>
-        <p style="font-size: 1.2rem; margin: 0.5rem 0 0 0;">Get your exact match score in 30 seconds and see precisely what's missing</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Show basic analysis results
+    analysis = st.session_state.categorized_analysis
+    category_scores = [data["match_percentage"] for data in analysis.values()]
+    overall_score = sum(category_scores) / len(category_scores) if category_scores else 0
+    
+    st.header("🔬 Resume Analysis Results")
+    st.metric(label="Overall Alignment Score", value=f"{overall_score:.0%}")
+    st.progress(overall_score)
 
-# Add rest of your existing app logic here...
-# For brevity, I'm focusing on the Google Analytics implementation
-
+# --- FAQ Section ---
 st.markdown("---")
 st.subheader("Frequently Asked Questions")
 
 with st.expander("How accurate is the AI resume analysis?"):
-    st.write("Our AI uses advanced semantic matching to understand the meaning behind skills and requirements, not just keyword matching. However, we also provide an interactive clarification step where you can correct any AI mistakes.")
-
-with st.expander("What happens to my resume data?"):
-    st.write("Your resume data is processed by our AI and may be stored for service improvement purposes. Please review our complete data usage disclaimer in the sidebar for full details on how we handle your information.")
+    st.write("Our AI uses advanced semantic matching to understand the meaning behind skills and requirements, not just keyword matching.")
 
 with st.expander("What file formats do you support?"):
     st.write("Currently, we support PDF resume uploads. You can also use our sample data to test the tool.")
 
 with st.expander("How is this different from other ATS checkers?"):
-    st.write("Unlike simple keyword matchers, we provide categorized analysis across key areas and give you specific, actionable editing instructions rather than just a score.")
+    st.write("Unlike simple keyword matchers, we provide categorized analysis across key areas and give you specific, actionable editing instructions.")
