@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://googletagmanager.com https://analytics.google.com; object-src 'none';
